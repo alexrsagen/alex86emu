@@ -1,0 +1,4 @@
+/target
+*.json
+# Should be removed for binary (app) projects, but kept for libraries and for the sake of the template
+Cargo.lock

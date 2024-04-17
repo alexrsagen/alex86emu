@@ -1,0 +1,19 @@
+[package]
+name = "intro-to-pwntools"
+description = "pwntools? more like n00btools"
+version = "0.1.0"
+authors = ["Alexander Sagen <alexander@sagen.me>"]
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+chrono = "0.4"
+bytesize = "1.3"
+log = "0.4"
+env_logger = "0.10"
+anyhow = "1.0"
+goblin = "0.8"
+iced-x86 = "1.21"
+base64 = "0.22"
+memchr = "2.7"
