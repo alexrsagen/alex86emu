@@ -1,4 +1,18 @@
-use clap::Parser;
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    EmulateFile {
+        /// Input binary file path
+        binary_path: PathBuf,
+    },
+    CompleteChallenge {
+        /// Remote address
+        remote_address: String,
+    },
+}
 
 #[derive(Debug, Parser)]
 #[clap(author, about, version)]
@@ -7,9 +21,8 @@ pub struct Args {
     #[clap(long, short = 'l', default_value = "info")]
     pub log_level: log::LevelFilter,
 
-    /// Input binary file path
-    #[clap(index = 1)]
-    pub binary_path: std::path::PathBuf,
+    #[clap(subcommand)]
+    pub command: Command,
 }
 
 impl Args {

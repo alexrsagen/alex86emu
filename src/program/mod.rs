@@ -1,4 +1,6 @@
 pub mod error;
+use std::collections::HashMap;
+
 use error::Error;
 use goblin::mach::cputype::{CPU_TYPE_X86, CPU_TYPE_X86_64};
 
@@ -206,6 +208,72 @@ pub fn execute_from_binary_slice(binary: &[u8]) -> Result<Execution, Error> {
                     }
 
                     execute_from_binary_slice(&binary[start..end])
+                } else {
+                    Err(Error::MachFatNoX86)
+                }
+            } else {
+                Err(Error::MachFatNoX86)
+            }
+        }
+
+        Ok(_) => Err(Error::UnimplementedBinaryFileFormat),
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub fn get_exports_from_binary_slice(binary: &[u8]) -> Result<HashMap<String, u64>, Error> {
+    match Object::parse(&binary) {
+        Ok(Object::Elf(elf)) => {
+            let mut label_addresses = HashMap::new();
+            for symbol in &elf.syms {
+                if symbol.st_value == 0 {
+                    continue
+                }
+                if let Some(symbol_name) = elf.strtab.get_at(symbol.st_name) {
+                    if symbol_name == "" {
+                        continue
+                    }
+                    label_addresses.insert(symbol_name.to_owned(), symbol.st_value);
+                }
+            }
+            Ok(label_addresses)
+        }
+
+        Ok(Object::PE(pe)) => {
+            let mut label_addresses = HashMap::new();
+            for export in pe.exports {
+                if let Some(name) = export.name {
+                    label_addresses.insert(name.to_owned(), export.rva as u64);
+                }
+            }
+            Ok(label_addresses)
+        }
+
+        Ok(Object::Mach(Mach::Binary(mach_o))) => {
+            let mut label_addresses = HashMap::new();
+            for export in mach_o.exports()? {
+                match export.info {
+                    goblin::mach::exports::ExportInfo::Regular { address, .. } => {
+                        label_addresses.insert(export.name, address);
+                    }
+                    _ => {}
+                }
+            }
+            Ok(label_addresses)
+        }
+
+        Ok(Object::Mach(Mach::Fat(mach_fat))) => {
+            if let Ok(Some(fat_arch)) = mach_fat.find_cputype(CPU_TYPE_X86).or(mach_fat.find_cputype(CPU_TYPE_X86_64)) {
+                let start = fat_arch.offset as usize;
+                if let Some(end) = start.checked_add(fat_arch.size as usize) {
+                    if start >= binary.len() {
+                        return Err(Error::MachFatNoX86);
+                    }
+                    if end > binary.len() {
+                        return Err(Error::MachFatNoX86);
+                    }
+
+                    get_exports_from_binary_slice(&binary[start..end])
                 } else {
                     Err(Error::MachFatNoX86)
                 }
